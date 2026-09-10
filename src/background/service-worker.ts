@@ -48,7 +48,7 @@ async function grantedPatterns(): Promise<string[]> {
  * Registration is persistent, so it survives browser restarts and is in place
  * before the first navigation of a session.
  */
-async function syncContentScripts(): Promise<void> {
+async function registerGateScripts(): Promise<void> {
   const matches = await grantedPatterns();
 
   let existing: chrome.scripting.RegisteredContentScript[] = [];
@@ -98,6 +98,19 @@ async function syncContentScripts(): Promise<void> {
   } catch (error) {
     console.error('[cattle-guard] could not register content scripts', error);
   }
+}
+
+let pendingSync: Promise<void> = Promise.resolve();
+
+/**
+ * Registration is a read-then-write, and the worker fires it from several
+ * places at once (top-level wake, onInstalled, permission changes). Run them
+ * one at a time, or two overlapping passes both see nothing registered and the
+ * second register() fails with "Duplicate script ID".
+ */
+function syncContentScripts(): Promise<void> {
+  pendingSync = pendingSync.then(registerGateScripts);
+  return pendingSync;
 }
 
 /**

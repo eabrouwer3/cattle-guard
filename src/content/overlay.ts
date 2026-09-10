@@ -208,8 +208,10 @@ export function createGate(url: string, callbacks: GateCallbacks): GateHandle {
     callbacks.onBack();
   });
 
-  // Swallow clicks that land on the backdrop so nothing reaches the page.
-  backdrop.addEventListener('click', (event) => event.stopPropagation(), true);
+  // Swallow clicks that land on the backdrop so nothing reaches the page. This
+  // must stay on the bubble phase: a capturing listener here would stop the
+  // event before it ever reached the buttons below.
+  backdrop.addEventListener('click', (event) => event.stopPropagation());
 
   // If the site (or an over-eager extension) rips the host out of the DOM or
   // rewrites its style attribute, put it back.

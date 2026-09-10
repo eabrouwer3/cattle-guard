@@ -35,6 +35,8 @@ function main(): void {
   let open: OpenGate | null = null;
   let confirmedUrl: string | null = null;
   let lastHref = location.href;
+  /** Set once the extension goes away; see the poll below. */
+  let orphaned = false;
 
   function closeGate(): void {
     if (!open) return;
@@ -43,19 +45,26 @@ function main(): void {
     open = null;
   }
 
+  /** Throws rather than rejects once the extension is gone, so it needs a try. */
+  function closeTab(): void {
+    try {
+      void chrome.runtime.sendMessage({ kind: 'closeTab' }).catch(() => undefined);
+    } catch {
+      /* extension context invalidated */
+    }
+  }
+
   function goBack(): void {
     const before = location.href;
     if (history.length <= 1) {
-      void chrome.runtime.sendMessage({ kind: 'closeTab' }).catch(() => undefined);
+      closeTab();
       return;
     }
     history.back();
     // A back that goes nowhere (single-entry tab opened by a link) leaves the
     // gate stranded, so fall back to closing the tab.
     window.setTimeout(() => {
-      if (location.href === before && open) {
-        void chrome.runtime.sendMessage({ kind: 'closeTab' }).catch(() => undefined);
-      }
+      if (location.href === before && open) closeTab();
     }, BACK_TIMEOUT_MS);
   }
 
@@ -76,6 +85,7 @@ function main(): void {
    * strength of the host having matched when the script was registered.
    */
   function evaluate(url: string, optimistic = false): void {
+    if (orphaned) return;
     const matches = hostnames === null ? optimistic : urlMatches(url, hostnames);
     if (!matches) {
       closeGate();
@@ -118,7 +128,26 @@ function main(): void {
   document.addEventListener(HISTORY_EVENT, checkUrl, true);
   window.addEventListener('popstate', checkUrl, true);
   window.addEventListener('hashchange', checkUrl, true);
-  window.setInterval(checkUrl, POLL_INTERVAL_MS);
+
+  // Reloading or removing the extension leaves this copy running against a dead
+  // context while a fresh one is injected beside it. A gate that can no longer
+  // talk to the service worker enforces nothing and its buttons only throw, so
+  // it has to stand down and let the new copy own the page.
+  const pollTimer = window.setInterval(() => {
+    let installed = false;
+    try {
+      installed = Boolean(chrome.runtime?.id);
+    } catch {
+      installed = false;
+    }
+    if (!installed) {
+      orphaned = true;
+      window.clearInterval(pollTimer);
+      closeGate();
+      return;
+    }
+    checkUrl();
+  }, POLL_INTERVAL_MS);
 
   // A back/forward restore from the bfcache re-runs no script and keeps this
   // state alive, so drop the confirmation and gate again.

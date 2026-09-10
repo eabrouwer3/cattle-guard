@@ -95,11 +95,20 @@ export function freezePage(host: Element, focusTarget: HTMLElement, onEscape: ()
     window.addEventListener(type, onKey, true);
   }
 
+  // focus() fires focusin synchronously, so a second trap on the page (a stale
+  // gate left behind by an extension reload) would volley focus back and forth
+  // with this one until the stack ran out. Never re-enter.
+  let refocusing = false;
   const onFocusIn = (event: FocusEvent): void => {
-    if (released) return;
+    if (released || refocusing) return;
     const target = event.target as Node | null;
     if (target && (target === host || host.contains(target))) return;
-    focusTarget.focus({ preventScroll: true });
+    refocusing = true;
+    try {
+      focusTarget.focus({ preventScroll: true });
+    } finally {
+      refocusing = false;
+    }
   };
   document.addEventListener('focusin', onFocusIn, true);
 

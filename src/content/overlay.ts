@@ -4,6 +4,8 @@
  * applied to <body> can touch it.
  */
 
+import { whenRootReady } from './dom';
+
 /** How long the confirm button stays inert after the gate appears, in ms. */
 const ARM_DELAY_MS = 350;
 
@@ -120,20 +122,6 @@ function hostLabel(url: string): string {
   } catch {
     return 'this site';
   }
-}
-
-/** Resolves once <html> exists; at document_start it sometimes does not yet. */
-function whenRootReady(): Promise<HTMLElement> {
-  if (document.documentElement) return Promise.resolve(document.documentElement);
-  return new Promise((resolve) => {
-    const observer = new MutationObserver(() => {
-      if (document.documentElement) {
-        observer.disconnect();
-        resolve(document.documentElement);
-      }
-    });
-    observer.observe(document, { childList: true, subtree: true });
-  });
 }
 
 /**

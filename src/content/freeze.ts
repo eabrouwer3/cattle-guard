@@ -3,6 +3,8 @@
  * media paused, keyboard neutralised, focus trapped.
  */
 
+import { whenRootReady } from './dom';
+
 const FREEZE_STYLE_ID = 'cattle-guard-freeze';
 
 /** How often to re-pause media, in ms. Players like YouTube retry autoplay. */
@@ -33,8 +35,11 @@ export function freezePage(host: Element, focusTarget: HTMLElement, onEscape: ()
 
   const style = freezeStyle();
   const attachStyle = (): void => {
+    if (released || style.isConnected) return;
     const root = document.head ?? document.documentElement;
-    if (root && !style.isConnected) root.appendChild(style);
+    if (root) root.appendChild(style);
+    // At document_start there may be no <html> yet; attach as soon as there is.
+    else void whenRootReady().then(attachStyle);
   };
   attachStyle();
 

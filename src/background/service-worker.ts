@@ -100,6 +100,27 @@ async function syncContentScripts(): Promise<void> {
   }
 }
 
+/**
+ * Injects the gate into tabs that are already sitting on a gated host, so a
+ * fresh install or a newly granted permission takes effect without a reload.
+ * Tab URLs are readable here because of the host permission itself, so this
+ * needs no "tabs" permission.
+ */
+async function repairOpenTabs(): Promise<void> {
+  const hostnames = await getHostnames();
+  let tabs: chrome.tabs.Tab[] = [];
+  try {
+    tabs = await chrome.tabs.query({});
+  } catch {
+    return;
+  }
+  for (const tab of tabs) {
+    if (tab.id === undefined || !tab.url || !urlMatches(tab.url, hostnames)) continue;
+    if (await pingGate(tab.id)) continue;
+    await injectGate(tab.id);
+  }
+}
+
 /* ------------------------------------------------------------------ *
  * Fallback-page allowances
  * ------------------------------------------------------------------ */
@@ -290,11 +311,11 @@ chrome.runtime.onMessage.addListener((message: ToBackgroundMessage, sender, send
 });
 
 chrome.runtime.onInstalled.addListener((details) => {
-  void syncContentScripts();
+  void syncContentScripts().then(repairOpenTabs);
   if (details.reason === 'install') void chrome.runtime.openOptionsPage().catch(() => undefined);
 });
 chrome.runtime.onStartup.addListener(() => void syncContentScripts());
-chrome.permissions.onAdded.addListener(() => void syncContentScripts());
+chrome.permissions.onAdded.addListener(() => void syncContentScripts().then(repairOpenTabs));
 chrome.permissions.onRemoved.addListener(() => void syncContentScripts());
 onHostnamesChanged(() => void syncContentScripts());
 

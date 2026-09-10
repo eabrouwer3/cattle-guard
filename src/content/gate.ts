@@ -10,6 +10,7 @@
  * webNavigation events relayed by the service worker.
  */
 import { getHostnames, onHostnamesChanged, urlMatches } from '../common/config';
+import { isSameNavigation } from '../common/navigation';
 import { HISTORY_EVENT, type PingResponse, type ToContentMessage } from '../common/messages';
 import { freezePage, type FrozenPage } from './freeze';
 import { createGate, type GateHandle } from './overlay';
@@ -25,25 +26,14 @@ const RUN_ONCE_FLAG = '__cattleGuardGateActive';
 interface OpenGate {
   handle: GateHandle;
   frozen: FrozenPage;
-  key: string;
-}
-
-/** Fragment-only changes are not navigations in these apps, so keys ignore the hash. */
-function keyOf(url: string): string {
-  try {
-    const parsed = new URL(url);
-    parsed.hash = '';
-    return parsed.href;
-  } catch {
-    return url;
-  }
+  url: string;
 }
 
 function main(): void {
   /** null until settings load; the content script only runs on matched hosts anyway. */
   let hostnames: string[] | null = null;
   let open: OpenGate | null = null;
-  let confirmedKey: string | null = null;
+  let confirmedUrl: string | null = null;
   let lastHref = location.href;
 
   function closeGate(): void {
@@ -69,16 +59,16 @@ function main(): void {
     }, BACK_TIMEOUT_MS);
   }
 
-  function openGate(url: string, key: string): void {
+  function openGate(url: string): void {
     const handle = createGate(url, {
       onConfirm: () => {
-        confirmedKey = key;
+        confirmedUrl = open?.url ?? url;
         closeGate();
       },
       onBack: goBack,
     });
     const frozen = freezePage(handle.host, handle.focusTarget, goBack);
-    open = { handle, frozen, key };
+    open = { handle, frozen, url };
   }
 
   /**
@@ -89,21 +79,20 @@ function main(): void {
     const matches = hostnames === null ? optimistic : urlMatches(url, hostnames);
     if (!matches) {
       closeGate();
-      confirmedKey = null;
+      confirmedUrl = null;
       return;
     }
 
-    const key = keyOf(url);
     if (open) {
       // The page navigated again while gated: re-point the gate, never lower it.
-      if (open.key !== key) {
-        open.key = key;
+      if (!isSameNavigation(open.url, url)) {
+        open.url = url;
         open.handle.setUrl(url);
       }
       return;
     }
-    if (confirmedKey === key) return;
-    openGate(url, key);
+    if (confirmedUrl !== null && isSameNavigation(confirmedUrl, url)) return;
+    openGate(url);
   }
 
   function checkUrl(): void {
@@ -135,7 +124,7 @@ function main(): void {
   // state alive, so drop the confirmation and gate again.
   window.addEventListener('pageshow', (event) => {
     if ((event as PageTransitionEvent).persisted) {
-      confirmedKey = null;
+      confirmedUrl = null;
       lastHref = location.href;
       evaluate(location.href);
     }

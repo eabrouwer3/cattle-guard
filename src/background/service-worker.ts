@@ -16,6 +16,13 @@ const HOOK_FILE = 'history-hook.js';
 /** How long to give a freshly committed document before checking it is gated, in ms. */
 const VERIFY_DELAY_MS = 600;
 
+/**
+ * How long a confirmation made on the fallback page lets that tab reach that
+ * URL, in ms. Without it the fallback page would bounce the tab straight back
+ * to itself; keeping it short and URL-specific means the next navigation gates.
+ */
+const ALLOWANCE_MS = 30_000;
+
 /* ------------------------------------------------------------------ *
  * Content script registration
  * ------------------------------------------------------------------ */
@@ -94,6 +101,44 @@ async function syncContentScripts(): Promise<void> {
 }
 
 /* ------------------------------------------------------------------ *
+ * Fallback-page allowances
+ * ------------------------------------------------------------------ */
+
+interface Allowance {
+  url: string;
+  at: number;
+}
+
+function allowanceKey(tabId: number): string {
+  return `allow:${tabId}`;
+}
+
+async function grantAllowance(tabId: number, url: string): Promise<void> {
+  await chrome.storage.session
+    .set({ [allowanceKey(tabId)]: { url, at: Date.now() } satisfies Allowance })
+    .catch(() => undefined);
+}
+
+async function hasAllowance(tabId: number, url: string): Promise<boolean> {
+  try {
+    const key = allowanceKey(tabId);
+    const stored = (await chrome.storage.session.get(key))[key] as Allowance | undefined;
+    if (!stored) return false;
+    if (Date.now() - stored.at > ALLOWANCE_MS) {
+      await chrome.storage.session.remove(key);
+      return false;
+    }
+    return stored.url === url;
+  } catch {
+    return false;
+  }
+}
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  void chrome.storage.session.remove(allowanceKey(tabId)).catch(() => undefined);
+});
+
+/* ------------------------------------------------------------------ *
  * Gate delivery
  * ------------------------------------------------------------------ */
 
@@ -160,6 +205,7 @@ function verifyGated(tabId: number, url: string): void {
   setTimeout(() => {
     void (async () => {
       if (!(await isStillAt(tabId, url))) return;
+      if (await hasAllowance(tabId, url)) return;
       if (await pingGate(tabId)) return;
       if (await injectGate(tabId)) {
         await chrome.tabs
@@ -195,7 +241,8 @@ async function isStillAt(tabId: number, url: string): Promise<boolean> {
 async function shouldGate(details: { frameId: number; url: string; tabId: number }): Promise<boolean> {
   if (details.frameId !== 0) return false;
   if (details.tabId < 0) return false;
-  return urlMatches(details.url, await getHostnames());
+  if (!urlMatches(details.url, await getHostnames())) return false;
+  return !(await hasAllowance(details.tabId, details.url));
 }
 
 // Full document loads. The content script gates these itself at document_start;
@@ -229,9 +276,15 @@ chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
  * Wiring
  * ------------------------------------------------------------------ */
 
-chrome.runtime.onMessage.addListener((message: ToBackgroundMessage, sender) => {
-  if (message?.kind === 'closeTab' && sender.tab?.id !== undefined) {
-    void chrome.tabs.remove(sender.tab.id).catch(() => undefined);
+chrome.runtime.onMessage.addListener((message: ToBackgroundMessage, sender, sendResponse) => {
+  const tabId = sender.tab?.id;
+  if (message?.kind === 'closeTab' && tabId !== undefined) {
+    void chrome.tabs.remove(tabId).catch(() => undefined);
+    return false;
+  }
+  if (message?.kind === 'allowOnce' && tabId !== undefined) {
+    void grantAllowance(tabId, message.url).then(() => sendResponse({ ok: true }));
+    return true; // responding asynchronously
   }
   return false;
 });

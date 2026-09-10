@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cattle Guard</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 24px;
+        background: #0f1115;
+        color: #e8eaed;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 16px;
+        line-height: 1.5;
+      }
+      .card {
+        width: min(560px, 100%);
+        padding: 32px;
+        border: 1px solid #2a2f3a;
+        border-radius: 16px;
+        background: #171a21;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+      }
+      .brand {
+        margin-bottom: 20px;
+        color: #f2c85c;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      h1 { margin-bottom: 6px; font-size: 22px; font-weight: 650; line-height: 1.3; }
+      .host { margin-bottom: 18px; color: #9aa3b2; font-size: 14px; }
+      .url {
+        margin-bottom: 26px;
+        padding: 12px 14px;
+        border: 1px solid #262b36;
+        border-radius: 10px;
+        background: #0f1218;
+        color: #c9d1e1;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 13px;
+        word-break: break-all;
+        max-height: 5.8em;
+        overflow-y: auto;
+      }
+      .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+      .btn {
+        padding: 12px 20px;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        user-select: none;
+      }
+      .confirm { background: #f2c85c; color: #1a1c22; }
+      .confirm:hover { background: #f7d477; }
+      .confirm[aria-disabled="true"] { opacity: 0.45; cursor: default; }
+      .back { border: 1px solid #333a48; background: transparent; color: #d5dbe6; }
+      .back:hover { background: #1e222b; }
+      .hint { margin-top: 20px; color: #6f7889; font-size: 12.5px; }
+    </style>
+  </head>
+  <body>
+    <section class="card" role="dialog" aria-modal="true" aria-labelledby="title">
+      <p class="brand">Cattle Guard</p>
+      <h1 id="title">Do you actually want to open this?</h1>
+      <p class="host" id="host"></p>
+      <p class="url" id="url"></p>
+      <div class="actions">
+        <div class="btn confirm" id="confirm" role="button" aria-disabled="true">Yes, I want to open this</div>
+        <div class="btn back" id="back" role="button">Take me back</div>
+      </div>
+      <p class="hint">
+        The in-page gate could not be injected here, so this fallback page took its place. Confirming needs a
+        real click.
+      </p>
+    </section>
+    <script src="blocked.js"></script>
+  </body>
+</html>

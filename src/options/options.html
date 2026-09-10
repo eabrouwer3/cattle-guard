@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cattle Guard settings</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        padding: 40px 24px;
+        background: #0f1115;
+        color: #e8eaed;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 15px;
+        line-height: 1.55;
+      }
+      main { width: min(640px, 100%); margin: 0 auto; }
+      .brand {
+        margin-bottom: 6px;
+        color: #f2c85c;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      h1 { margin-bottom: 8px; font-size: 24px; }
+      p.lede { margin-bottom: 28px; color: #9aa3b2; }
+      label { display: block; margin-bottom: 8px; font-weight: 600; }
+      textarea {
+        width: 100%;
+        min-height: 190px;
+        padding: 14px;
+        border: 1px solid #2a2f3a;
+        border-radius: 10px;
+        background: #171a21;
+        color: #e8eaed;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 14px;
+        line-height: 1.6;
+        resize: vertical;
+      }
+      textarea:focus { border-color: #f2c85c; outline: none; }
+      .help { margin-top: 8px; color: #6f7889; font-size: 13px; }
+      .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+      button {
+        padding: 10px 18px;
+        border: 1px solid transparent;
+        border-radius: 9px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.primary { background: #f2c85c; color: #1a1c22; }
+      button.primary:hover { background: #f7d477; }
+      button.ghost { border-color: #333a48; background: transparent; color: #d5dbe6; }
+      button.ghost:hover { background: #1e222b; }
+      #status { min-height: 1.6em; margin-top: 16px; font-size: 14px; }
+      #status.ok { color: #7fd68a; }
+      #status.warn { color: #f2c85c; }
+      #status.error { color: #f28b82; }
+      section.perms { margin-top: 36px; padding-top: 24px; border-top: 1px solid #232833; }
+      h2 { margin-bottom: 12px; font-size: 16px; }
+      ul { list-style: none; }
+      li { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; }
+      li code { color: #c9d1e1; font-size: 14px; }
+      .tag { font-size: 12px; font-weight: 600; }
+      .tag.granted { color: #7fd68a; }
+      .tag.missing { color: #f2c85c; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="brand">Cattle Guard</p>
+      <h1>Gated sites</h1>
+      <p class="lede">
+        Every navigation to these hosts is blocked by a full-page gate until you click through — including
+        in-app links on single-page apps. There is no grace period and nothing is remembered.
+      </p>
+
+      <label for="hostnames">One hostname per line</label>
+      <textarea id="hostnames" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+      <p class="help">
+        Subdomains match automatically: <code>reddit.com</code> also covers <code>old.reddit.com</code> and
+        <code>www.reddit.com</code>. Full URLs are reduced to their hostname.
+      </p>
+
+      <div class="actions">
+        <button id="save" class="primary" type="button">Save</button>
+        <button id="reset" class="ghost" type="button">Restore defaults</button>
+      </div>
+      <p id="status" role="status" aria-live="polite"></p>
+
+      <section class="perms">
+        <h2>Site access</h2>
+        <ul id="permissions"></ul>
+        <p class="help">
+          Cattle Guard asks for access only to the hosts listed above. Saving a new host prompts for
+          permission; removing one gives that access back.
+        </p>
+      </section>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

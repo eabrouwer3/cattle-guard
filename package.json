@@ -1,0 +1,20 @@
+{
+  "name": "cattle-guard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chromium MV3 extension that gates configured sites behind a deliberate click, on every navigation including SPA route changes.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "test": "node build-tests.mjs && node --test dist-test/*.test.js"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "@types/node": "^22.20.2",
+    "esbuild": "^0.23.0",
+    "typescript": "^5.5.4"
+  }
+}
